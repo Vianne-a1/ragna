@@ -1,12 +1,14 @@
 const canvas = document.getElementById('map-canvas');
 const ctx = canvas.getContext('2d');
 const uploadInput = document.getElementById('map-upload');
-const tableBody = document.querySelector('#points-table tbody');
+const calculateBtn = document.getElementById('calculate-btn');
+const pointsTable = document.getElementById('points-table').querySelector('tbody');
 
-let points = [];
-let connections = [];
+const points = [];
+const connections = [];
+let selectedPoint = null;
 
-// Set canvas size dynamically
+// Set canvas dimensions
 canvas.width = canvas.offsetWidth;
 canvas.height = canvas.offsetHeight;
 
@@ -16,6 +18,7 @@ uploadInput.addEventListener('change', (event) => {
     if (file) {
         const img = new Image();
         img.onload = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         };
         img.src = URL.createObjectURL(file);
@@ -29,61 +32,103 @@ canvas.addEventListener('click', (event) => {
     const y = event.clientY - rect.top;
 
     const pointValue = prompt('Enter point value (1, 2, or 3):');
-    if (pointValue && ['1', '2', '3'].includes(pointValue)) {
-        points.push({ x, y, value: parseInt(pointValue) });
-        drawPoint(x, y, pointValue);
+    const guildName = prompt('Enter guild name:');
+    if (pointValue && ['1', '2', '3'].includes(pointValue) && guildName) {
+        const point = { x, y, value: parseInt(pointValue), guild: guildName, id: points.length };
+        points.push(point);
+        drawPoint(point);
     }
 });
 
-function drawPoint(x, y, value) {
+function drawPoint({ x, y, value, guild }) {
     ctx.beginPath();
     ctx.arc(x, y, 10, 0, Math.PI * 2);
     ctx.fillStyle = 'red';
     ctx.fill();
     ctx.stroke();
     ctx.fillStyle = 'white';
-    ctx.fillText(value, x - 5, y + 5);
+    ctx.fillText(value, x - 5, y + 5); // Show point value
+    ctx.fillStyle = 'black';
+    ctx.fillText(guild[0].toUpperCase(), x - 5, y + 20); // Show guild initial
 }
 
-// Draw connections
+// Connect points on right-click
 canvas.addEventListener('contextmenu', (event) => {
     event.preventDefault();
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
-    const lastPoint = points[points.length - 1];
-    if (lastPoint) {
-        connections.push({ from: lastPoint, to: { x, y } });
-        drawLine(lastPoint.x, lastPoint.y, x, y);
+    const clickedPoint = findNearestPoint(x, y);
+
+    if (clickedPoint) {
+        if (!selectedPoint) {
+            // First point selected
+            selectedPoint = clickedPoint;
+            highlightPoint(clickedPoint, 'blue');
+        } else {
+            // Second point selected, connect them
+            drawLine(selectedPoint, clickedPoint);
+            connections.push({ from: selectedPoint, to: clickedPoint });
+            highlightPoint(selectedPoint, 'red'); // Reset previous point
+            selectedPoint = null;
+        }
     }
 });
 
-function drawLine(x1, y1, x2, y2) {
+function findNearestPoint(x, y) {
+    return points.find(
+        (point) => Math.sqrt((x - point.x) ** 2 + (y - point.y) ** 2) < 15
+    );
+}
+
+function highlightPoint({ x, y }, color) {
     ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
+    ctx.arc(x, y, 10, 0, Math.PI * 2);
+    ctx.strokeStyle = color;
+    ctx.stroke();
+}
+
+function drawLine(point1, point2) {
+    ctx.beginPath();
+    ctx.moveTo(point1.x, point1.y);
+    ctx.lineTo(point2.x, point2.y);
     ctx.strokeStyle = 'blue';
     ctx.stroke();
 }
 
-// Generate table
-function generateTable() {
-    tableBody.innerHTML = '';
-    for (let day = 1; day <= 6; day++) {
-        const totalPoints = points.reduce((sum, point) => sum + point.value, 0);
-        tableBody.innerHTML += `
-            <tr>
-                <td>Day ${day}</td>
-                <td>${totalPoints}</td>
-                <td>Optimized path TBD</td>
-            </tr>
-        `;
-    }
-}
+// Calculate total points and optimize path
+calculateBtn.addEventListener('click', () => {
+    const dayResults = [];
 
-document.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-        generateTable();
-    }
+    // Group connections by guild
+    const guildConnections = points.reduce((acc, point) => {
+        acc[point.guild] = acc[point.guild] || [];
+        acc[point.guild].push(point);
+        return acc;
+    }, {});
+
+    Object.keys(guildConnections).forEach((guild, index) => {
+        const guildPoints = guildConnections[guild];
+        const totalPoints = guildPoints.reduce((sum, point) => sum + point.value, 0);
+        const path = guildPoints.map((p) => `Point ${p.id}`).join(' → ');
+
+        dayResults.push({ day: index + 1, guild, totalPoints, path });
+    });
+
+    updateTable(dayResults);
 });
+
+function updateTable(results) {
+    pointsTable.innerHTML = ''; // Clear table
+
+    results.forEach(({ day, guild, totalPoints, path }) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>Day ${day}</td>
+            <td>${totalPoints} (Guild: ${guild})</td>
+            <td>${path}</td>
+        `;
+        pointsTable.appendChild(row);
+    });
+}
