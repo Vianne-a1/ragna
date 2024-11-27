@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map Points Optimizer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Map Points Optimizer</h1>
+    </header>
+    <main>
+        <section id="upload-section">
+            <h2>Upload Your Map</h2>
+            <input type="file" id="map-upload" accept="image/png">
+            <div id="map-container">
+                <canvas id="map-canvas"></canvas>
+            </div>
+        </section>
+        <section id="table-section">
+            <h2>Optimization Table</h2>
+            <table id="points-table">
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Total Points</th>
+                        <th>Optimized Path</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows will be dynamically added -->
+                </tbody>
+            </table>
+        </section>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>
